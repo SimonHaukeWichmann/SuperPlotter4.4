@@ -29,6 +29,56 @@ first_fig.update_traces(contours_z=dict(show=True, usecolormap=True,
 graph = dcc.Graph(id='surface-plot', figure=first_fig,
                   style={'border': '1px solid lightgray'},)
 
+card_1 = dbc.Card([
+    dbc.CardBody([
+        html.P(
+            'To get started and to get a feel for the space try the following:'),
+        html.P('x+y'),
+        html.P('x*y'),
+        html.P('x*y**2'),
+        html.P('x**2*y**2'),
+    ])
+], style={'marginTop': '10px'})
+
+card_2 = dbc.Card([
+    dbc.CardBody([
+        html.P(
+            'You can also use sin() and cos(), but also tan() and log(). My favorites are those:'),
+        html.P('sin(0.2*x*y)'),
+        html.P('sin(0.5*x*y)+cos(x*3)+0.3*y*x'),
+        html.P('log(x*y)'),
+    ])
+], style={'marginTop': '10px'})
+
+card_3 = dbc.Card([
+    dbc.CardBody([
+        html.P(
+            'Finally, you can play around with mathematical concepts. E.g., observe what happens when you divide by x and y or when you only take the absolute:'),
+        html.P('1/x+1/y'),
+        html.P('1/sin(x)+1/tan(y)+y**3'),
+        html.P('log(abs(x*y))'),
+        html.P('log(abs(10+x*y))'),
+    ])
+], style={'marginTop': '10px'})
+
+offcanvas = html.Div(
+    [
+        dbc.Offcanvas(
+            children=[
+                html.P(
+                    "This app was created to make the invisible visible. It makes it easy to visualize 2d functions that are hard to imagine. Be inspired by the following gallery and have fun exploring the world of math."
+                ),
+                card_1,
+                card_2,
+                card_3,
+            ],
+            id="offcanvas",
+            title="Info",
+            is_open=False,
+        ),
+    ]
+)
+
 
 function_card_2 = dbc.Card(
     dbc.CardBody([
@@ -40,6 +90,10 @@ function_card_2 = dbc.Card(
                 ], style={'align-items': 'right'})
                 ], justify='end'),
         dbc.Row([
+                dbc.Col([
+                    dbc.Button('Info', id='info_button', color='secondary',
+                               style={'marginRight': '20px'}),
+                ], style={'display': 'flex', 'align-items': 'left'}),
                 dbc.Col([
                     dbc.Button('Plot Function', id='plot_button'),
                 ], width={'size': 'auto'}, className='text-center')
@@ -87,7 +141,8 @@ app.layout = html.Div([
         dark=True
     ),
     graph,
-    function_card_2
+    function_card_2,
+    offcanvas
 ])
 
 # Define the callback
@@ -129,6 +184,17 @@ def update_figure(n_clicks, function_str, figure):
                                         highlightcolor="limegreen", project_z=True))
 
     return fig_2
+
+
+@app.callback(
+    Output("offcanvas", "is_open"),
+    Input("info_button", "n_clicks"),
+    [State("offcanvas", "is_open")],
+)
+def toggle_offcanvas(n1, is_open):
+    if n1:
+        return not is_open
+    return is_open
 
 
 if __name__ == '__main__':

@@ -9,6 +9,8 @@ from dash_extensions.enrich import Output, DashProxy, Input, MultiplexerTransfor
 from dash.dependencies import Input, Output, State
 
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
+
 toolbox_color = '#383838'
 
 x, y = sympy.symbols('x y')

@@ -28,8 +28,41 @@ first_fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=800,)
 first_fig.update_traces(contours_z=dict(show=True, usecolormap=True,
                                         highlightcolor="limegreen", project_z=True))
 
+# filter out 'nan' values for log etc
+mask = np.isnan(z_mesh)
+z_mesh = z_mesh[~mask]
+z_max = np.max(z_mesh)
+z_min = np.min(z_mesh)
+
+# creating plot for prescribed x
+x = 3
+z_vals = f(x, y_vals)
+first_fig_x = go.Figure(
+    data=[go.Scatter(x=y_vals, y=z_vals, mode='lines', line=dict(color='#008B8B'))])
+first_fig_x.update_layout(xaxis_title="y",
+                          margin=dict(l=0, r=10, t=10, b=10), height=400,
+                          yaxis=dict(range=[z_min, z_max])
+                          )
+
+# creating plot for prescribed y
+y = 3
+z_vals = f(x_vals, y)
+first_fig_y = go.Figure(
+    data=[go.Scatter(x=x_vals, y=z_vals, mode='lines', line=dict(color='#008B8B'))])
+first_fig_y.update_layout(xaxis_title="x",
+                          margin=dict(l=0, r=10, t=20, b=10), height=400,
+                          yaxis=dict(range=[z_min, z_max])
+                          )
+
 graph = dcc.Graph(id='surface-plot', figure=first_fig,
                   style={'border': '1px solid lightgray'},)
+
+graph_x = dcc.Graph(id='x-plot', figure=first_fig_x,
+                    # style={'border': '1px solid lightgray'},
+                    )
+graph_y = dcc.Graph(id='y-plot', figure=first_fig_y,
+                    # style={'border': '1px solid lightgray'},
+                    )
 
 card_1 = dbc.Card([
     dbc.CardBody([
@@ -102,27 +135,7 @@ function_card_2 = dbc.Card(
                 ], justify='end', style={'display': 'flex', 'align-items': 'right', 'marginTop': '10px'}),
     ]),
     style={"width": "20rem", "position": "absolute", "top": "6rem",
-           "left": "1rem", "margin": "1rem", "zIndex": "1", 'backgroundColor': toolbox_color}
-)
-
-
-button_group = html.Div(
-    [
-        dbc.RadioItems(
-            id="radios",
-            className="btn-group",
-            inputClassName="btn-check",
-            labelClassName="btn btn-outline-primary",
-            labelCheckedClassName="active",
-            options=[
-                {"label": "Light Mode", "value": 1},
-                {"label": "Dark Mode", "value": 2},
-            ],
-            value=1,
-        ),
-        html.Div(id="output"),
-    ],
-    className="radio-group",
+           "left": "0.5rem", "margin": "1rem", "zIndex": "1", 'backgroundColor': toolbox_color}
 )
 
 
@@ -131,7 +144,8 @@ app.layout = html.Div([
         children=[
             dbc.Col([
                 dbc.Row([
-                    html.H4('Super Plotter 4.4', style={'color': 'white'})
+                    html.H4('Super Plotter 4.4', style={
+                            'color': 'white'}, id='app_title')
                 ], style={'marginBottom': '0px', 'marginTop': '0px'}),
                 dbc.Row([
                     html.P('created by Simon Wichmann',
@@ -142,9 +156,21 @@ app.layout = html.Div([
         color=toolbox_color,
         dark=True
     ),
-    graph,
-    function_card_2,
-    offcanvas
+    dbc.Row([
+        html.Div([
+            graph,
+            function_card_2,
+        ], style={'width': '70%', 'display': 'inline-block'}),
+        html.Div([
+            dbc.Row([
+                graph_x
+            ]),
+            dbc.Row([
+                graph_y
+            ])
+        ], style={'width': '30%', 'display': 'inline-block', 'border': '1px solid lightgray'}),
+    ]),
+    offcanvas,
 ])
 
 # Define the callback
@@ -161,7 +187,7 @@ app.layout = html.Div([
     prevent_initial_callback=True
 )
 def update_figure(n_clicks, function_str, figure):
-    print(function_str)
+    # print(function_str)
     if function_str == None or function_str == '':
         return first_fig
 
@@ -197,6 +223,62 @@ def toggle_offcanvas(n1, is_open):
     if n1:
         return not is_open
     return is_open
+
+
+# clickData to add the 2d plots
+@app.callback(
+    Output(component_id='x-plot', component_property='figure'),
+    Output(component_id='y-plot', component_property='figure'),
+    [Input("surface-plot", "hoverData"),
+     State(component_id='function-input', component_property='value'), ],
+    prevent_initial_callback=True
+)
+def create_slice_plots(clickData, function_str):
+    # print(clickData)
+    if clickData == None or clickData == '':
+        return first_fig_x, first_fig_y
+    if function_str == None or function_str == '':
+        function_str = '1/sin(7*x)+1/sin(4*y)'
+    point = clickData['points'][0]
+
+    # create variables and extract functions
+    x, y = sympy.symbols('x y')
+    z = sympy.parse_expr(function_str)
+    f = sympy.lambdify((x, y), z, 'numpy')
+
+    # this is only needed to recieve the upper and lower z-bounds
+    x_vals = np.linspace(-5, 5, 100)
+    y_vals = np.linspace(-5, 5, 100)
+    x_mesh, y_mesh = np.meshgrid(x_vals, y_vals)
+    z_mesh = f(x_mesh, y_mesh)
+
+    # filter out 'nan' values for log etc
+    mask = np.isnan(z_mesh)
+    z_mesh = z_mesh[~mask]
+    z_max = np.max(z_mesh)
+    z_min = np.min(z_mesh)
+
+    # creating plot for prescribed x
+    x = np.round(point['x'], 4)
+    z_vals = f(x, y_vals)
+    fig_x = go.Figure(
+        data=[go.Scatter(x=y_vals, y=z_vals, mode='lines', line=dict(color='#008B8B'))])
+    fig_x.update_layout(xaxis_title="y",
+                        margin=dict(l=0, r=10, t=10, b=10), height=400,
+                        yaxis=dict(range=[z_min, z_max])
+                        )
+
+    # creating plot for prescribed y
+    y = np.round(point['y'], 4)
+    z_vals = f(x_vals, y)
+    fig_y = go.Figure(
+        data=[go.Scatter(x=x_vals, y=z_vals, mode='lines', line=dict(color='#008B8B'))])
+    fig_y.update_layout(xaxis_title="x",
+                        margin=dict(l=0, r=10, t=20, b=10), height=400,
+                        yaxis=dict(range=[z_min, z_max])
+                        )
+
+    return fig_x, fig_y
 
 
 if __name__ == '__main__':
